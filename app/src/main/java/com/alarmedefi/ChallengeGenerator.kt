@@ -53,7 +53,7 @@ object ChallengeGenerator {
     )
 
     private val phpBugs = listOf(
-        Pair("echo 'Salut'", listOf("echo 'Salut';", "echo "Salut";")),
+        Pair("echo 'Salut'", listOf("echo 'Salut';", "echo \"Salut\";")),
         Pair("x = 5;", listOf("§x = 5;", "§x=5;")),
         Pair("if (§a > 3 { echo §a; }", listOf("if (§a > 3) { echo §a; }", "if (§a > 3) {echo §a;}")),
         Pair("§total = §a + ;", listOf("§total = §a + §b;", "§total=§a+§b;")),
@@ -61,7 +61,7 @@ object ChallengeGenerator {
         Pair("§tab = array(1, 2, 3;", listOf("§tab = array(1, 2, 3);", "§tab=array(1,2,3);")),
         Pair("function add(§a, §b { return §a + §b; }", listOf("function add(§a, §b) { return §a + §b; }", "function add(§a,§b){return §a+§b;}")),
         Pair("foreach (§items as §item) { echo §item", listOf("foreach (§items as §item) { echo §item; }", "foreach (§items as §item) {echo §item;}")),
-        Pair("§msg = 'Bonjour;", listOf("§msg = 'Bonjour';", "§msg="Bonjour";")),
+        Pair("§msg = 'Bonjour;", listOf("§msg = 'Bonjour';", "§msg=\"Bonjour\";")),
         Pair("if (§ok = true) { return 1; }", listOf("if (§ok == true) { return 1; }", "if (§ok === true) { return 1; }")),
         Pair("return count(§liste", listOf("return count(§liste);", "return count(§liste);")),
         Pair("§val = trim(§_GET['id']", listOf("§val = trim(§_GET['id']);", "§val=trim(§_GET['id']);")),
@@ -169,9 +169,9 @@ object ChallengeGenerator {
     }
 
     private fun clean(s: String): String =
-        s.trim().split(Regex("\s+")).filter { it.isNotEmpty() }.joinToString(" ")
+        s.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.joinToString(" ")
             .replace("’", "'").replace("‘", "'")
-            .replace("“", """).replace("”", """)
+            .replace("“", "\"").replace("”", "\"")
 
     fun isCorrect(challenge: Challenge, input: String): Boolean {
         val given = clean(input)
