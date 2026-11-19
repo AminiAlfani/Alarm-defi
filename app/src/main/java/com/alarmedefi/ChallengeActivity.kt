@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
 import android.os.Build
@@ -79,22 +80,25 @@ class ChallengeActivity : AppCompatActivity() {
         radiusDp: Float,
         strokeColor: Int? = null,
         withRipple: Boolean = false
-    ): android.graphics.drawable.Drawable {
-        val shape = GradientDrawable().apply {
+    ): Drawable {
+        val radiusPx = dp(radiusDp).toFloat()
+        val drawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             setColor(fillColor)
-            cornerRadius = dp(radiusDp).toFloat()
-            if (strokeColor != null) setStroke(dp(1f), strokeColor)
+            cornerRadius = radiusPx
+            if (strokeColor != null) {
+                setStroke(dp(1f), strokeColor)
+            }
         }
         return if (withRipple) {
-            val mask = GradientDrawable().apply {
+            val maskDrawable = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 setColor(Color.WHITE)
-                cornerRadius = dp(radiusDp).toFloat()
+                cornerRadius = radiusPx
             }
-            RippleDrawable(ColorStateList.valueOf(Color.parseColor("#33FFFFFF")), shape, mask)
+            RippleDrawable(ColorStateList.valueOf(Color.parseColor("#33FFFFFF")), drawable, maskDrawable)
         } else {
-            shape
+            drawable
         }
     }
 
