@@ -11,35 +11,37 @@ data class Challenge(
 object ChallengeGenerator {
 
     private val riddles = listOf(
-        Triple("Qu'est-ce qui monte et ne redescend jamais ?", listOf("l'age", "l'âge", "age", "âge"), 0),
-        Triple("Plus j'en ai, moins tu vois. Qu'est-ce que c'est ?", listOf("l'obscurité", "obscurité", "le noir", "noir", "la nuit", "nuit"), 0),
-        Triple("Qu'est-ce qui a des dents mais ne mord pas ?", listOf("un peigne", "peigne", "un engrenage", "engrenage"), 0),
-        Triple("Qu'est-ce qui appartient à toi mais que les autres utilisent plus que toi ?", listOf("ton nom", "nom", "mon nom", "le nom", "prenom", "prénom"), 0),
-        Triple("Je parle sans bouche et j'entends sans oreilles. Qui suis-je ?", listOf("l'écho", "echo", "écho", "l'echo"), 0),
-        Triple("Qu'est-ce qui a une tête et un pied mais ni bras ni jambes ?", listOf("un lit", "lit"), 0),
-        Triple("Combien font la moitié de deux plus deux ?", listOf("3", "trois"), 0),
-        Triple("Quel mois de l'année a 28 jours ?", listOf("tous", "tous les mois", "les douze", "12"), 0)
+        Pair("Qu'est-ce qui monte et ne redescend jamais ?", listOf("l'age", "l'âge", "age", "âge")),
+        Pair("Plus j'en ai, moins tu vois. Qu'est-ce que c'est ?", listOf("l'obscurité", "obscurité", "le noir", "noir", "la nuit", "nuit")),
+        Pair("Qu'est-ce qui a des dents mais ne mord pas ?", listOf("un peigne", "peigne", "un engrenage", "engrenage")),
+        Pair("Qu'est-ce qui t'appartient mais que les autres utilisent plus que toi ?", listOf("ton nom", "nom", "mon nom", "le nom", "prénom", "prenom")),
+        Pair("Je parle sans bouche et j'entends sans oreilles. Qui suis-je ?", listOf("l'écho", "écho", "echo", "l'echo")),
+        Pair("Qu'est-ce qui a une tête et un pied mais ni bras ni jambes ?", listOf("un lit", "lit")),
+        Pair("Combien font la moitié de deux plus deux ?", listOf("3", "trois")),
+        Pair("Quel mois de l'année a 28 jours ?", listOf("tous", "tous les mois", "les douze", "12"))
     )
 
     private val phpCopy = listOf(
         "echo 'Salut';",
-        "\$x = 5;",
-        "if (\$a > 3) { echo \$a; }",
-        "foreach (\$list as \$item) {}",
-        "\$nom = trim(\$_POST['nom']);",
-        "return count(\$tab);",
-        "\$sum = \$a + \$b;",
-        "echo strlen(\$texte);"
+        "§x = 5;",
+        "if (§a > 3) { echo §a; }",
+        "foreach (§list as §item) {}",
+        "§nom = trim(§_POST['nom']);",
+        "return count(§tab);",
+        "§sum = §a + §b;",
+        "echo strlen(§texte);"
     )
 
     private val phpBugs = listOf(
-        Pair("echo 'Salut'", listOf("echo 'Salut';", "echo "Salut";")),
-        Pair("x = 5;", listOf("\$x = 5;", "\$x=5;")),
-        Pair("if (\$a > 3 { echo \$a; }", listOf("if (\$a > 3) { echo \$a; }", "if (\$a > 3) {echo \$a;}")),
-        Pair("\$total = \$a + ;", listOf("\$total = \$a + \$b;", "\$total=\$a+\$b;")),
-        Pair("for (\$i = 0; \$i < 3; \$i++ { }", listOf("for (\$i = 0; \$i < 3; \$i++) { }", "for (\$i=0; \$i<3; \$i++) { }")),
-        Pair("\$tab = array(1, 2, 3;", listOf("\$tab = array(1, 2, 3);", "\$tab=array(1,2,3);"))
+        Pair("echo 'Salut'", listOf("echo 'Salut';", "echo \"Salut\";")),
+        Pair("x = 5;", listOf("§x = 5;", "§x=5;")),
+        Pair("if (§a > 3 { echo §a; }", listOf("if (§a > 3) { echo §a; }", "if (§a > 3) {echo §a;}")),
+        Pair("§total = §a + ;", listOf("§total = §a + §b;", "§total=§a+§b;")),
+        Pair("for (§i = 0; §i < 3; §i++ { }", listOf("for (§i = 0; §i < 3; §i++) { }", "for (§i=0; §i<3; §i++) { }")),
+        Pair("§tab = array(1, 2, 3;", listOf("§tab = array(1, 2, 3);", "§tab=array(1,2,3);"))
     )
+
+    private fun php(s: String): String = s.replace('§', '$')
 
     fun next(): Challenge = when (Random.nextInt(4)) {
         0 -> math()
@@ -49,8 +51,7 @@ object ChallengeGenerator {
     }
 
     private fun math(): Challenge {
-        val kind = Random.nextInt(3)
-        return when (kind) {
+        return when (Random.nextInt(3)) {
             0 -> {
                 val a = Random.nextInt(12, 60)
                 val b = Random.nextInt(12, 60)
@@ -75,19 +76,19 @@ object ChallengeGenerator {
     }
 
     private fun copy(): Challenge {
-        val code = phpCopy.random()
+        val code = php(phpCopy.random())
         return Challenge("Code PHP à recopier", code, listOf(code))
     }
 
     private fun bug(): Challenge {
         val b = phpBugs.random()
-        return Challenge("Bug PHP à corriger", b.first, b.second)
+        return Challenge("Bug PHP à corriger", php(b.first), b.second.map { php(it) })
     }
 
     private fun clean(s: String): String =
-        s.trim().replace("\s+".toRegex(), " ")
-            .replace('’', ''').replace('‘', ''')
-            .replace('“', '"').replace('”', '"')
+        s.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.joinToString(" ")
+            .replace("’", "'").replace("‘", "'")
+            .replace("“", "\"").replace("”", "\"")
 
     fun isCorrect(challenge: Challenge, input: String): Boolean {
         val given = clean(input)
