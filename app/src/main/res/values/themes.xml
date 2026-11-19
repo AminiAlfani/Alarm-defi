@@ -1,3 +1,9 @@
 <resources>
-    <style name="Theme.AlarmeDefi" parent="Theme.Material3.DayNight.NoActionBar" />
+    <style name="Theme.AlarmeDefi" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#FF5252</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSurface">#181A20</item>
+        <item name="android:windowBackground">#101216</item>
+        <item name="android:statusBarColor">#101216</item>
+    </style>
 </resources>
