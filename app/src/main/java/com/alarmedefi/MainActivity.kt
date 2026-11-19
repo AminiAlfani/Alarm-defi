@@ -1,6 +1,7 @@
 package com.alarmedefi
 
 import android.Manifest
+import android.animation.LayoutTransition
 import android.app.AlertDialog
 import android.app.TimePickerDialog
 import android.content.Intent
@@ -15,9 +16,12 @@ import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.view.animation.OvershootInterpolator
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.NumberPicker
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -75,6 +79,38 @@ class MainActivity : AppCompatActivity() {
 
     private fun dp(value: Float): Int = (value * resources.displayMetrics.density).toInt()
 
+    private fun screenWidthDp(): Int = resources.configuration.screenWidthDp
+
+    private fun horizontalPaddingDp(): Float = when {
+        screenWidthDp() >= 600 -> 36f
+        screenWidthDp() <= 360 -> 14f
+        else -> 20f
+    }
+
+    private fun smoothPress(view: View) {
+        view.setOnTouchListener { v, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    v.animate()
+                        .scaleX(0.96f)
+                        .scaleY(0.96f)
+                        .setDuration(110)
+                        .start()
+                }
+                android.view.MotionEvent.ACTION_UP,
+                android.view.MotionEvent.ACTION_CANCEL -> {
+                    v.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .setDuration(180)
+                        .setInterpolator(OvershootInterpolator(1.2f))
+                        .start()
+                }
+            }
+            false
+        }
+    }
+
     private fun roundedBg(
         fillColor: Int,
         radiusDp: Float,
@@ -84,7 +120,7 @@ class MainActivity : AppCompatActivity() {
     ): Drawable {
         val radiusPx = dp(radiusDp).toFloat()
         val drawable = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
+            setShape(GradientDrawable.RECTANGLE)
             setColor(fillColor)
             cornerRadius = radiusPx
             if (strokeColor != null) {
@@ -93,7 +129,7 @@ class MainActivity : AppCompatActivity() {
         }
         return if (withRipple) {
             val maskDrawable = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
+                setShape(GradientDrawable.RECTANGLE)
                 setColor(Color.WHITE)
                 cornerRadius = radiusPx
             }
@@ -104,10 +140,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildUi() {
+        val hPad = horizontalPaddingDp()
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(bgBlack)
-            setPadding(dp(20f), dp(36f), dp(20f), dp(20f))
+            setPadding(dp(hPad), dp(36f), dp(hPad), dp(20f))
+            layoutTransition = LayoutTransition().apply {
+                enableTransitionType(LayoutTransition.CHANGING)
+                setDuration(220)
+            }
         }
 
         val topBar = LinearLayout(this).apply {
@@ -116,18 +157,19 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = dp(8f) }
+            ).apply { bottomMargin = dp(10f) }
         }
 
         val testPill = Button(this).apply {
             text = "Tester le son max"
-            textSize = 13f
+            textSize = if (screenWidthDp() <= 360) 12f else 13f
             isAllCaps = false
             setTextColor(systemOrange)
             background = roundedBg(cardElevated, 20f, strokeColor = separatorGray, withRipple = true)
             setPadding(dp(14f), dp(8f), dp(14f), dp(8f))
             minHeight = 0
             minimumHeight = 0
+            smoothPress(this)
             setOnClickListener {
                 val intent = Intent(this@MainActivity, AlarmService::class.java).apply {
                     putExtra(AlarmScheduler.EXTRA_ALARM_ID, -1)
@@ -138,6 +180,7 @@ class MainActivity : AppCompatActivity() {
                     putExtra(AlarmScheduler.EXTRA_ALARM_ID, -1)
                     putExtra(AlarmScheduler.EXTRA_ALARM_LABEL, "Alarme Défi")
                 })
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
             }
         }
 
@@ -148,10 +191,11 @@ class MainActivity : AppCompatActivity() {
         val addButton = Button(this).apply {
             text = "+"
             textSize = 24f
-            setTextColor(systemOrange)
-            background = roundedBg(cardElevated, 22f, withRipple = true)
+            setTextColor(Color.BLACK)
+            background = roundedBg(systemOrange, 22f, withRipple = true)
             layoutParams = LinearLayout.LayoutParams(dp(44f), dp(44f))
             setPadding(0, 0, 0, 0)
+            smoothPress(this)
             setOnClickListener { openCreateDialog() }
         }
 
@@ -162,7 +206,7 @@ class MainActivity : AppCompatActivity() {
 
         root.addView(TextView(this).apply {
             text = "Alarmes"
-            textSize = 34f
+            textSize = if (screenWidthDp() <= 360) 30f else 34f
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             setTextColor(labelPrimary)
             letterSpacing = -0.02f
@@ -172,13 +216,13 @@ class MainActivity : AppCompatActivity() {
             text = "Sans report • Jours récurrents • Son max"
             textSize = 13f
             setTextColor(labelSecondary)
-            setPadding(0, dp(4f), 0, dp(20f))
+            setPadding(0, dp(4f), 0, dp(18f))
         })
 
         emptyView = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            background = roundedBg(cardElevated, 16f)
+            background = roundedBg(cardElevated, 18f, strokeColor = Color.parseColor("#26FFFFFF"), strokeWidthDp = 0.75f)
             setPadding(dp(24f), dp(36f), dp(24f), dp(36f))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -192,7 +236,7 @@ class MainActivity : AppCompatActivity() {
                 gravity = Gravity.CENTER
             })
             addView(TextView(this@MainActivity).apply {
-                text = "Touchez + pour programmer une alarme et choisir ses jours."
+                text = "Touchez + pour régler l'horloge et choisir ses jours."
                 textSize = 14f
                 setTextColor(labelSecondary)
                 gravity = Gravity.CENTER
@@ -203,12 +247,19 @@ class MainActivity : AppCompatActivity() {
 
         val scroll = ScrollView(this).apply {
             overScrollMode = View.OVER_SCROLL_NEVER
+            isVerticalScrollBarEnabled = false
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
             )
         }
         listContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            layoutTransition = LayoutTransition().apply {
+                enableTransitionType(LayoutTransition.APPEARING)
+                enableTransitionType(LayoutTransition.DISAPPEARING)
+                enableTransitionType(LayoutTransition.CHANGING)
+                setDuration(200)
+            }
         }
         scroll.addView(listContainer)
         root.addView(scroll)
@@ -221,16 +272,31 @@ class MainActivity : AppCompatActivity() {
         val alarms = AlarmRepository.getAll(this)
         emptyView.visibility = if (alarms.isEmpty()) View.VISIBLE else View.GONE
 
-        for (alarm in alarms) {
+        val compact = screenWidthDp() <= 360
+        for ((index, alarm) in alarms.withIndex()) {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                background = roundedBg(cardElevated, 16f)
-                setPadding(dp(18f), dp(16f), dp(14f), dp(16f))
+                background = roundedBg(
+                    fillColor = cardElevated,
+                    radiusDp = 18f,
+                    strokeColor = Color.parseColor("#1AFFFFFF"),
+                    strokeWidthDp = 0.75f,
+                    withRipple = true
+                )
+                setPadding(dp(if (compact) 14f else 18f), dp(16f), dp(if (compact) 10f else 14f), dp(16f))
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply { bottomMargin = dp(12f) }
+                alpha = 0f
+                translationY = dp(14f).toFloat()
+                animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay((index * 35L).coerceAtMost(210L))
+                    .setDuration(240)
+                    .start()
             }
 
             val infoCol = LinearLayout(this).apply {
@@ -241,7 +307,7 @@ class MainActivity : AppCompatActivity() {
 
             val timeText = TextView(this).apply {
                 text = "%02d:%02d".format(alarm.hour, alarm.minute)
-                textSize = 44f
+                textSize = if (compact) 38f else 44f
                 typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
                 fontFeatureSettings = "tnum"
                 setTextColor(if (alarm.enabled) labelPrimary else labelTertiary)
@@ -255,7 +321,7 @@ class MainActivity : AppCompatActivity() {
 
             metaRow.addView(TextView(this).apply {
                 text = "${alarm.label} • ${alarm.repeatSummary()}"
-                textSize = 14f
+                textSize = if (compact) 12.5f else 14f
                 setTextColor(if (alarm.enabled) labelSecondary else labelTertiary)
             })
 
@@ -296,13 +362,14 @@ class MainActivity : AppCompatActivity() {
 
             val deleteBtn = TextView(this).apply {
                 text = "✕"
-                textSize = 16f
+                textSize = 15f
                 setTextColor(labelSecondary)
                 gravity = Gravity.CENTER
                 background = roundedBg(cardSecondary, 16f, withRipple = true)
                 layoutParams = LinearLayout.LayoutParams(dp(32f), dp(32f)).apply {
-                    marginStart = dp(10f)
+                    marginStart = dp(8f)
                 }
+                smoothPress(this)
                 setOnClickListener {
                     AlarmScheduler.cancel(this@MainActivity, alarm.id)
                     AlarmRepository.delete(this@MainActivity, alarm.id)
@@ -317,10 +384,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun styleTimePickerDialog(dialog: TimePickerDialog) {
+        dialog.window?.setBackgroundDrawable(roundedBg(cardElevated, 22f, strokeColor = separatorGray))
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
+                setTextColor(systemOrange)
+                typeface = Typeface.DEFAULT_BOLD
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
+                setTextColor(labelSecondary)
+            }
+            stylePickersRecursively(dialog.window?.decorView)
+        }
+    }
+
+    private fun stylePickersRecursively(view: View?) {
+        if (view == null) return
+        if (view is NumberPicker) {
+            view.setTextColor(labelPrimary)
+            view.setFormatter { value -> "%02d".format(value) }
+        }
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                stylePickersRecursively(view.getChildAt(i))
+            }
+        }
+    }
+
     private fun openCreateDialog() {
         val now = Calendar.getInstance()
-        TimePickerDialog(
+        val picker = TimePickerDialog(
             this,
+            R.style.Theme_AlarmeDefi_TimePickerDialog,
             { _, hour, minute ->
                 openConfigDialog(
                     AlarmItem(
@@ -336,12 +431,15 @@ class MainActivity : AppCompatActivity() {
             now.get(Calendar.HOUR_OF_DAY),
             now.get(Calendar.MINUTE),
             true
-        ).show()
+        )
+        styleTimePickerDialog(picker)
+        picker.show()
     }
 
     private fun openEditDialog(existing: AlarmItem) {
-        TimePickerDialog(
+        val picker = TimePickerDialog(
             this,
+            R.style.Theme_AlarmeDefi_TimePickerDialog,
             { _, hour, minute ->
                 existing.hour = hour
                 existing.minute = minute
@@ -351,11 +449,15 @@ class MainActivity : AppCompatActivity() {
             existing.hour,
             existing.minute,
             true
-        ).show()
+        )
+        styleTimePickerDialog(picker)
+        picker.show()
     }
 
     private fun openConfigDialog(item: AlarmItem) {
         val selectedDays = item.repeatDays.toMutableSet()
+        val compact = screenWidthDp() <= 360
+        val daySize = if (compact) 32f else 36f
 
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -402,9 +504,10 @@ class MainActivity : AppCompatActivity() {
             btn.setTextColor(if (active) Color.BLACK else labelPrimary)
             btn.background = roundedBg(
                 fillColor = if (active) systemOrange else cardSecondary,
-                radiusDp = 18f,
+                radiusDp = daySize / 2f,
                 withRipple = true
             )
+            btn.animate().scaleX(if (active) 1.05f else 1f).scaleY(if (active) 1.05f else 1f).setDuration(140).start()
         }
 
         for ((dayConst, shortLetter) in dayOptions) {
@@ -419,8 +522,8 @@ class MainActivity : AppCompatActivity() {
                 minimumWidth = 0
                 minHeight = 0
                 minimumHeight = 0
-                layoutParams = LinearLayout.LayoutParams(dp(36f), dp(36f)).apply {
-                    marginEnd = if (dayConst != Calendar.SUNDAY) dp(6f) else 0
+                layoutParams = LinearLayout.LayoutParams(dp(daySize), dp(daySize)).apply {
+                    marginEnd = if (dayConst != Calendar.SUNDAY) dp(if (compact) 4f else 6f) else 0
                 }
                 styleDayButton(this, isSelected)
                 setOnClickListener {
@@ -470,6 +573,7 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { marginEnd = dp(8f) }
+            smoothPress(this)
             setOnClickListener { applyPreset(target) }
         }
 
@@ -478,7 +582,7 @@ class MainActivity : AppCompatActivity() {
         presetsRow.addView(presetChip("1 fois", emptySet()))
         container.addView(presetsRow)
 
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this, R.style.Theme_AlarmeDefi_TimePickerDialog)
             .setTitle("%02d:%02d — Configuration".format(item.hour, item.minute))
             .setView(container)
             .setPositiveButton("Enregistrer") { _, _ ->
@@ -495,6 +599,18 @@ class MainActivity : AppCompatActivity() {
                 ).show()
             }
             .setNegativeButton("Annuler", null)
-            .show()
+            .create()
+
+        dialog.window?.setBackgroundDrawable(roundedBg(cardElevated, 22f, strokeColor = separatorGray))
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
+                setTextColor(systemOrange)
+                typeface = Typeface.DEFAULT_BOLD
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
+                setTextColor(labelSecondary)
+            }
+        }
+        dialog.show()
     }
 }
