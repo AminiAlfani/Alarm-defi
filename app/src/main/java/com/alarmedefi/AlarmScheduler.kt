@@ -11,20 +11,41 @@ object AlarmScheduler {
     const val EXTRA_ALARM_ID = "alarm_id"
     const val EXTRA_ALARM_LABEL = "alarm_label"
 
-    fun schedule(context: Context, alarm: AlarmItem) {
-        val cal = Calendar.getInstance().apply {
+    fun computeNextTriggerMillis(alarm: AlarmItem, nowMillis: Long = System.currentTimeMillis()): Long {
+        val base = Calendar.getInstance().apply {
+            timeInMillis = nowMillis
             set(Calendar.HOUR_OF_DAY, alarm.hour)
             set(Calendar.MINUTE, alarm.minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        if (alarm.repeatDays.isEmpty()) {
+            if (base.timeInMillis <= nowMillis) {
+                base.add(Calendar.DAY_OF_YEAR, 1)
+            }
+            return base.timeInMillis
+        }
+
+        for (offset in 0..7) {
+            val candidate = (base.clone() as Calendar).apply {
+                add(Calendar.DAY_OF_YEAR, offset)
+            }
+            val dayOfWeek = candidate.get(Calendar.DAY_OF_WEEK)
+            if (dayOfWeek in alarm.repeatDays && candidate.timeInMillis > nowMillis) {
+                return candidate.timeInMillis
             }
         }
 
+        base.add(Calendar.DAY_OF_YEAR, 1)
+        return base.timeInMillis
+    }
+
+    fun schedule(context: Context, alarm: AlarmItem) {
+        val triggerAt = computeNextTriggerMillis(alarm)
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = pendingIntent(context, alarm.id, alarm.label)
-        val info = AlarmManager.AlarmClockInfo(cal.timeInMillis, pi)
+        val info = AlarmManager.AlarmClockInfo(triggerAt, pi)
         alarmManager.setAlarmClock(info, pi)
     }
 

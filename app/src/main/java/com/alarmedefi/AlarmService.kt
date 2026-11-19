@@ -43,7 +43,6 @@ class AlarmService : Service() {
     private var currentLabel: String = "RÉVEIL !"
     private var sirenHigh = true
 
-    // Verrouille en continu le volume système au MAXIMUM absolu (empêche de baisser le son)
     private val volumeLockLoop = object : Runnable {
         override fun run() {
             forceMaxVolume()
@@ -51,7 +50,6 @@ class AlarmService : Service() {
         }
     }
 
-    // Ajoute une sirène stridente haute fréquence par-dessus la sonnerie
     private val sirenPulseLoop = object : Runnable {
         override fun run() {
             try {

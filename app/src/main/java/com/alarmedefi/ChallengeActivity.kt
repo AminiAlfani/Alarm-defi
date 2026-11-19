@@ -3,9 +3,11 @@ package com.alarmedefi
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
@@ -28,13 +30,21 @@ class ChallengeActivity : AppCompatActivity() {
     private lateinit var input: EditText
     private var failures = 0
     private var alarmId = -1
-    private var alarmLabel = "RÉVEIL !"
+    private var alarmLabel = "Réveil"
+
+    private val bgBlack = Color.parseColor("#000000")
+    private val cardElevated = Color.parseColor("#1C1C1E")
+    private val cardField = Color.parseColor("#2C2C2E")
+    private val labelPrimary = Color.parseColor("#FFFFFF")
+    private val labelSecondary = Color.parseColor("#8E8E93")
+    private val systemRed = Color.parseColor("#FF453A")
+    private val systemOrange = Color.parseColor("#FF9F0A")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         alarmId = intent.getIntExtra(AlarmScheduler.EXTRA_ALARM_ID, -1)
-        alarmLabel = intent.getStringExtra(AlarmScheduler.EXTRA_ALARM_LABEL) ?: "RÉVEIL !"
+        alarmLabel = intent.getStringExtra(AlarmScheduler.EXTRA_ALARM_LABEL) ?: "Réveil"
 
         if (Build.VERSION.SDK_INT >= 27) {
             setShowWhenLocked(true)
@@ -45,14 +55,13 @@ class ChallengeActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() { /* bloqué volontairement */ }
+            override fun handleOnBackPressed() { /* pas de report / snooze */ }
         })
 
         buildUi()
         newChallenge()
     }
 
-    // Intercepte les boutons physiques Volume Bas / Volume Haut pour remettre immédiatement au max
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
             startService(Intent(this, AlarmService::class.java).apply {
@@ -63,97 +72,121 @@ class ChallengeActivity : AppCompatActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    private fun buildUi() {
-        val d = resources.displayMetrics.density
-        val pad = (24 * d).toInt()
+    private fun dp(value: Float): Int = (value * resources.displayMetrics.density).toInt()
 
+    private fun roundedBg(
+        fillColor: Int,
+        radiusDp: Float,
+        strokeColor: Int? = null,
+        withRipple: Boolean = false
+    ): android.graphics.drawable.Drawable {
+        val shape = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(fillColor)
+            cornerRadius = dp(radiusDp).toFloat()
+            if (strokeColor != null) setStroke(dp(1f), strokeColor)
+        }
+        return if (withRipple) {
+            val mask = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.WHITE)
+                cornerRadius = dp(radiusDp).toFloat()
+            }
+            RippleDrawable(ColorStateList.valueOf(Color.parseColor("#33FFFFFF")), shape, mask)
+        } else {
+            shape
+        }
+    }
+
+    private fun buildUi() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#101216"))
-            setPadding(pad, pad, pad, pad)
+            setBackgroundColor(bgBlack)
+            setPadding(dp(24f), dp(32f), dp(24f), dp(32f))
         }
 
         root.addView(TextView(this).apply {
-            text = "🚨 $alarmLabel"
-            textSize = 28f
-            setTextColor(Color.parseColor("#FF5252"))
+            text = alarmLabel
+            textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
+            setTextColor(systemRed)
             gravity = Gravity.CENTER
+        })
+
+        root.addView(TextView(this).apply {
+            text = "Résolvez le défi"
+            textSize = 28f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            setTextColor(labelPrimary)
+            gravity = Gravity.CENTER
+            setPadding(0, dp(4f), 0, dp(24f))
         })
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding((20 * d).toInt(), (24 * d).toInt(), (20 * d).toInt(), (24 * d).toInt())
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1C1F26"))
-                cornerRadius = 20 * d
-                setStroke((2 * d).toInt(), Color.parseColor("#FF5252"))
-            }
+            background = roundedBg(cardElevated, 20f)
+            setPadding(dp(20f), dp(24f), dp(20f), dp(24f))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = (24 * d).toInt()
-                bottomMargin = (20 * d).toInt()
-            }
+            ).apply { bottomMargin = dp(16f) }
         }
 
         typeView = TextView(this).apply {
-            textSize = 14f
-            setTextColor(Color.parseColor("#FFD600"))
+            textSize = 13f
             typeface = Typeface.DEFAULT_BOLD
+            setTextColor(systemOrange)
             gravity = Gravity.CENTER
         }
         card.addView(typeView)
 
         questionView = TextView(this).apply {
             textSize = 22f
-            setTextColor(Color.WHITE)
             typeface = Typeface.MONOSPACE
+            setTextColor(labelPrimary)
             gravity = Gravity.CENTER
-            setPadding(0, (14 * d).toInt(), 0, (18 * d).toInt())
+            setPadding(0, dp(12f), 0, dp(20f))
         }
         card.addView(questionView)
 
         input = EditText(this).apply {
-            hint = "Ta réponse ici..."
-            setHintTextColor(Color.parseColor("#7A8291"))
-            setTextColor(Color.WHITE)
-            textSize = 18f
+            hint = "Votre réponse"
+            setHintTextColor(labelSecondary)
+            setTextColor(labelPrimary)
+            textSize = 17f
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             setSingleLine(true)
-            setPadding((16 * d).toInt(), (14 * d).toInt(), (16 * d).toInt(), (14 * d).toInt())
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#262A34"))
-                cornerRadius = 12 * d
-            }
+            background = roundedBg(cardField, 12f)
+            setPadding(dp(16f), dp(14f), dp(16f), dp(14f))
         }
         card.addView(input)
 
         root.addView(card)
 
         feedbackView = TextView(this).apply {
-            textSize = 15f
-            setTextColor(Color.parseColor("#FF8A80"))
+            textSize = 14f
+            setTextColor(systemRed)
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, (16 * d).toInt())
+            setPadding(0, 0, 0, dp(16f))
         }
         root.addView(feedbackView)
 
-        root.addView(Button(this).apply {
-            text = "VALIDER ET COUPER LE SON"
-            textSize = 16f
+        val confirmBtn = Button(this).apply {
+            text = "Arrêter l'alarme"
+            textSize = 17f
+            isAllCaps = false
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor("#FF3D00"))
-                cornerRadius = 14 * d
-            }
-            setPadding((24 * d).toInt(), (16 * d).toInt(), (24 * d).toInt(), (16 * d).toInt())
+            setTextColor(labelPrimary)
+            background = roundedBg(systemRed, 14f, withRipple = true)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(54f)
+            )
             setOnClickListener { validate() }
-        })
+        }
+        root.addView(confirmBtn)
 
         setContentView(root)
     }
@@ -171,13 +204,20 @@ class ChallengeActivity : AppCompatActivity() {
                 action = AlarmService.ACTION_STOP
             })
             if (alarmId != -1) {
-                AlarmRepository.setEnabled(this, alarmId, false)
-                AlarmScheduler.cancel(this, alarmId)
+                val alarm = AlarmRepository.getAll(this).find { it.id == alarmId }
+                if (alarm != null && alarm.repeatDays.isNotEmpty()) {
+                    alarm.enabled = true
+                    AlarmRepository.upsert(this, alarm)
+                    AlarmScheduler.schedule(this, alarm)
+                } else {
+                    AlarmRepository.setEnabled(this, alarmId, false)
+                    AlarmScheduler.cancel(this, alarmId)
+                }
             }
             finish()
         } else {
             failures++
-            feedbackView.text = "Faux ! Volume verrouillé à 100 % (échecs : $failures)"
+            feedbackView.text = "Réponse incorrecte • Volume à 100 % ($failures)"
             startService(Intent(this, AlarmService::class.java).apply {
                 action = AlarmService.ACTION_ESCALATE
             })
